@@ -34,6 +34,8 @@ jobs:
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
+          
         run: |
           echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
-          docker push ${{ secrets.DOCKER_USERNAME }}/task-manager:latest
+          docker tag task-manager:latest $DOCKER_USERNAME/task-manager:latest
+          docker push $DOCKER_USERNAME/task-manager:latest
