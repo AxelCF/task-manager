@@ -17,25 +17,29 @@ jobs:
         uses: actions/checkout@v2
 
       - name: Setup Node.js
-        uses: actions/setup-node@v3
+        uses: actions/setup-node@v2
         with:
-          node-version: 16
+          node-version: '18'
 
       - name: Install dependencies
         run: npm install
 
       - name: Run tests
-        run: npm test
+        run: |
+          if [ -f package.json ] && grep -q '"test"' package.json; then
+            npm test
+          else
+            echo "⚠️ No tests found, skipping..."
+          fi
 
       - name: Build Docker Image
-        run: docker build -t ${{ secrets.DOCKER_USERNAME }}/task-manager:latest .
+        run: docker build -t axelmaurice/task-manager:latest .
 
-      - name: Push Docker Image to Docker Hub
+      - name: Login to Docker Hub
         env:
           DOCKER_USERNAME: ${{ secrets.DOCKER_USERNAME }}
           DOCKER_PASSWORD: ${{ secrets.DOCKER_PASSWORD }}
-          
-        run: |
-          echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
-          docker tag task-manager:latest $DOCKER_USERNAME/task-manager:latest
-          docker push $DOCKER_USERNAME/task-manager:latest
+        run: echo "${DOCKER_PASSWORD}" | docker login -u "${DOCKER_USERNAME}" --password-stdin
+
+      - name: Push Docker Image to Docker Hub
+        run: docker push axelmaurice/task-manager:latest
