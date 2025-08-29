@@ -14,10 +14,10 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
 
       - name: Setup Node.js
-        uses: actions/setup-node@v2
+        uses: actions/setup-node@v3
         with:
           node-version: '18'
 
@@ -43,9 +43,3 @@ jobs:
 
       - name: Push Docker Image to Docker Hub
         run: docker push axelmaurice/task-manager:latest
-
-      - name: Deploy to Render
-        uses: render-examples/deploy@v1
-        with:
-          api_key: ${{ secrets.RENDER_API_KEY }}
-          service_id: ${{ secrets.RENDER_SERVICE_ID }}
