@@ -1,18 +1,46 @@
 const express = require('express');
 const { Pool } = require('pg');
+const client = require('prom-client');
 
 const app = express();
 app.use(express.json());
 
-// Connexion PostgreSQL avec SSL pour Render
-const pool = new Pool({
-  connectionString: process.env.DATABASE_URL,
-  ssl: {
-    rejectUnauthorized: false
-  }
+const register = new client.Registry();
+client.collectDefaultMetrics({ register });
+
+const httpRequests = new client.Counter({
+  name: "http_requests_total",
+  help: "Nombre total de requêtes HTTP",
+});
+register.registerMetric(httpRequests);
+
+const httpRequestDuration = new client.Histogram({
+  name: "http_request_duration_seconds",
+  help: "Durée des requêtes HTTP en secondes",
+  labelNames: ["method", "route", "status_code"],
+  buckets: [0.1, 0.3, 1.5, 5, 10],
+});
+register.registerMetric(httpRequestDuration);
+
+app.use((req, res, next) => {
+  const end = httpRequestDuration.startTimer();
+  res.on("finish", () => {
+    httpRequests.inc();
+    end({ method: req.method, route: req.route?.path || req.path, status_code: res.statusCode });
+  });
+  next();
 });
 
-// Initialisation de la table tasks
+app.get("/metrics", async (req, res) => {
+  res.set("Content-Type", register.contentType);
+  res.end(await register.metrics());
+});
+
+const pool = new Pool({
+  connectionString: process.env.DATABASE_URL,
+  ssl: { rejectUnauthorized: false }
+});
+
 pool.query(`
   CREATE TABLE IF NOT EXISTS tasks (
     id SERIAL PRIMARY KEY,
@@ -23,7 +51,6 @@ pool.query(`
 .then(() => console.log("Table 'tasks' prête"))
 .catch(err => console.error("Erreur init DB", err));
 
-// Routes CRUD
 app.get('/tasks', async (req, res) => {
   try {
     const result = await pool.query('SELECT * FROM tasks ORDER BY id');
@@ -73,6 +100,6 @@ app.delete('/tasks/:id', async (req, res) => {
   }
 });
 
-// Port dynamique pour Render
+
 const PORT = process.env.PORT || 3000;
 app.listen(PORT, () => console.log(`API démarrée sur le port ${PORT}`));
